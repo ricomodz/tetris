@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psychedelic Tetris</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: black;
+        }
+        canvas {
+            display: block;
+        }
+        #warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-family: 'Courier New', monospace;
+            font-size: 36px;
+            text-shadow: 0 0 15px #ff0000, 0 0 30px #00ff00;
+            z-index: 10;
+            animation: glitch 0.05s infinite;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        @keyframes glitch {
+            0% { transform: translate(-50%, -50%) translate(3px, 2px); }
+            20% { transform: translate(-50%, -50%) translate(-3px, -2px); }
+            40% { transform: translate(-50%, -50%) translate(2px, -3px); }
+            60% { transform: translate(-50%, -50%) translate(-2px, 3px); }
+            80% { transform: translate(-50%, -50%) translate(0, 0); }
+            100% { transform: translate(-50%, -50%) translate(3px, 2px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="warning">Your FiveM Got Hacked</div>
+    <canvas id="canvas"></canvas>
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Tetris-like shapes
+        const shapes = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[1, 1, 1], [0, 1, 0]], // T
+            [[1, 1, 1], [1, 0, 0]], // L
+            [[1, 1, 1], [0, 0, 1]] // J
+        ];
+        const blockSize = 30;
+        let pieces = [];
+
+        // Create new piece
+        function newPiece() {
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            const x = Math.floor(Math.random() * (canvas.width / blockSize - shape[0].length)) * blockSize;
+            return { shape, x, y: -blockSize * shape.length, speed: 3 + Math.random() * 4 };
+        }
+
+        // Draw piece
+        function drawPiece(piece) {
+            const r = Math.sin(Date.now() * 0.002) * 127 + 128;
+            const g = Math.cos(Date.now() * 0.003) * 127 + 128;
+            const b = Math.sin(Date.now() * 0.004) * 127 + 128;
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < piece.shape.length; i++) {
+                for (let j = 0; j < piece.shape[i].length; j++) {
+                    if (piece.shape[i][j]) {
+                        ctx.fillRect(piece.x + j * blockSize, piece.y + i * blockSize, blockSize - 1, blockSize - 1);
+                        ctx.strokeRect(piece.x + j * blockSize, piece.y + i * blockSize, blockSize - 1, blockSize - 1);
+                    }
+                }
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (Math.random() < 0.03) pieces.push(newPiece());
+            pieces = pieces.filter(p => p.y < canvas.height);
+            pieces.forEach(p => {
+                p.y += p.speed;
+                drawPiece(p);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Audio setup
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Sawtooth oscillator
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(440 + Math.sin(Date.now() * 0.002) * 300, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+
+        // Low-frequency drone
+        const drone = audioCtx.createOscillator();
+        const droneGain = audioCtx.createGain();
+        drone.type = 'sine';
+        drone.frequency.setValueAtTime(60, audioCtx.currentTime);
+        droneGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        drone.connect(droneGain);
+        droneGain.connect(audioCtx.destination);
+        drone.start();
+
+        // Beep sound (faster loop)
+        function playBeep() {
+            const beep = audioCtx.createOscillator();
+            const beepGain = audioCtx.createGain();
+            beep.type = 'square';
+            beep.frequency.setValueAtTime(880, audioCtx.currentTime);
+            beepGain.gain.setValueAtTime(0.07, audioCtx.currentTime);
+            beep.connect(beepGain);
+            beepGain.connect(audioCtx.destination);
+            beep.start();
+            beep.stop(audioCtx.currentTime + 0.05);
+            setTimeout(playBeep, 300);
+        }
+        playBeep();
+
+        // Modulate sawtooth frequency
+        function modulate() {
+            oscillator.frequency.setValueAtTime(440 + Math.sin(Date.now() * 0.002) * 300, audioCtx.currentTime);
+            setTimeout(modulate, 80);
+        }
+        modulate();
+
+        // Start animation
+        animate();
+
+        // Resize canvas
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
